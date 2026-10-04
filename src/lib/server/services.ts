@@ -15,7 +15,7 @@ import {
   scannerUnavailableReason,
   createOpeningScannerRow,
   createPremarketScannerRow,
-  calculatePremarketChange,
+  calculateAMCChange,
   calculatePremarketVolume,
 } from "../domain/scanner";
 import {
@@ -102,14 +102,13 @@ export async function premarketMetrics(
   context?: ScanContext,
 ) {
   context ??= await getContext(client, asOf);
-  const start = context.quotePrevious.close;
-  const cutoff =
-    asOf < context.quoteSession.open ? asOf : context.quoteSession.open;
+  const start = context.previous.close;
+  const cutoff = asOf < context.session.open ? asOf : context.session.open;
   const premarket = await cached(
-    cacheKey("scan-premarket-v4", [
+    cacheKey("scan-amc-v5", [
       client.config.feed,
       asOf,
-      context.quoteSession.date,
+      context.session.date,
       [...tickers].sort(),
     ]),
     "scan-premarket",
@@ -118,7 +117,7 @@ export async function premarketMetrics(
       if (cutoff <= start)
         return {} as Record<
           string,
-          ReturnType<typeof calculatePremarketChange> & {
+          ReturnType<typeof calculateAMCChange> & {
             volume: number | null;
           }
         >;
@@ -130,9 +129,12 @@ export async function premarketMetrics(
         ),
         client.bars(
           tickers,
-          marketTime(context.quotePrevious.date, "00:00"),
+          marketTime(context.previous.date, "00:00"),
           new Date(
-            Date.parse(marketTime(context.quoteSession.date, "00:00")) - 1,
+            Math.min(
+              Date.parse(cutoff),
+              Date.parse(marketTime(context.session.date, "00:00")),
+            ) - 1,
           ).toISOString(),
           "1Day",
         ),
@@ -141,19 +143,19 @@ export async function premarketMetrics(
         tickers.map((symbol) => [
           symbol,
           {
-            ...calculatePremarketChange(
+            ...calculateAMCChange(
               bars[symbol] ?? [],
               references[symbol]?.find(
-                (bar) => marketDate(bar.t) === context.quotePrevious.date,
+                (bar) => marketDate(bar.t) === context.previous.date,
               ) ?? null,
-              context.quotePrevious,
-              context.quoteSession,
+              context.previous,
+              context.session,
               asOf,
             ),
             volume: calculatePremarketVolume(
               bars[symbol] ?? [],
-              context.quotePrevious,
-              context.quoteSession,
+              context.previous,
+              context.session,
               asOf,
             ),
           },
@@ -163,7 +165,7 @@ export async function premarketMetrics(
   );
   return {
     metrics: premarket.value,
-    sessionDate: context.quoteSession.date,
+    sessionDate: context.session.date,
     warnings: premarket.warnings,
   };
 }
@@ -469,7 +471,8 @@ export async function scanBatch(
         premarketVolume: premarket.metrics[row.symbol]?.volume ?? null,
         premarketPrice: premarket.metrics[row.symbol]?.price ?? null,
         premarketTime: premarket.metrics[row.symbol]?.time ?? null,
-        premarketSessionDate: context.quoteSession.date,
+        premarketSessionDate: context.session.date,
+        amcVersion: 1,
       }));
       capWarnings.push(...premarket.warnings);
     } catch {
@@ -479,10 +482,11 @@ export async function scanBatch(
         premarketVolume: null,
         premarketPrice: null,
         premarketTime: null,
-        premarketSessionDate: context.quoteSession.date,
+        premarketSessionDate: context.session.date,
+        amcVersion: 1,
       }));
       capWarnings.push(
-        "Premarket prices and volume could not be loaded. Other scanner results remain available; Scan to retry.",
+        "AMC change and volume could not be loaded. Other scanner results remain available; Scan to retry.",
       );
     }
   }

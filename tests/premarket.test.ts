@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateSessionQuote,
   calculatePremarketChange,
+  calculateAMCChange,
   calculatePremarketVolume,
   createPremarketScannerRow,
   filterScannerRows,
@@ -278,5 +279,61 @@ describe("previous-close to open volume", () => {
         minPremarketVolume: 0,
       }),
     ).toHaveLength(0);
+  });
+});
+
+describe("AMC window after close and over weekends", () => {
+  it("uses Friday close and retains Friday after-hours on Saturday, excluding Friday morning", () => {
+    const bars = [
+      bar(previous.date, "07:59", 104.99),
+      bar(previous.date, "15:59", 100),
+      bar(previous.date, "16:00", 100.2),
+      bar(previous.date, "19:59", 100.13),
+      bar(session.date, "07:59", 102),
+    ];
+    const saturday = marketTime("2025-03-08", "12:00");
+    const change = calculateAMCChange(bars, prior, previous, session, saturday);
+    expect(change.change).toBeCloseTo(0.13);
+    expect(change.time).toBe(marketTime(previous.date, "19:59"));
+    expect(calculatePremarketVolume(bars, previous, session, saturday)).toBe(
+      20,
+    );
+    expect(
+      calculateAMCChange(
+        bars,
+        prior,
+        previous,
+        session,
+        marketTime(previous.date, "17:00"),
+      ).change,
+    ).toBeCloseTo(0.2);
+    expect(
+      calculatePremarketVolume(
+        bars,
+        previous,
+        session,
+        marketTime(previous.date, "17:00"),
+      ),
+    ).toBe(10);
+    expect(
+      calculateAMCChange(bars, prior, previous, session, at("08:00")).change,
+    ).toBeCloseTo(2);
+    expect(calculatePremarketVolume(bars, previous, session, at("08:00"))).toBe(
+      30,
+    );
+  });
+  it("does not invent a change without an eligible price or matching reference", () => {
+    expect(
+      calculateAMCChange([], prior, previous, session, at("08:00")).change,
+    ).toBeNull();
+    expect(
+      calculateAMCChange(
+        [bar(previous.date, "19:59", 101)],
+        null,
+        previous,
+        session,
+        at("08:00"),
+      ).change,
+    ).toBeNull();
   });
 });

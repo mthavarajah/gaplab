@@ -112,6 +112,7 @@ export type ScannerRow = {
   premarketPrice?: number | null;
   premarketTime?: string | null;
   premarketSessionDate?: string;
+  amcVersion?: number;
   symbol: string;
   name: string;
   exchange: string;

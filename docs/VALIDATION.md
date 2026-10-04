@@ -119,3 +119,12 @@ Desktop scanner, details, AAPL/NVDA/TSLA candle and line charts, historical tabl
 ## Known data limits
 
 The local configuration uses delayed SIP: a 16-minute historical buffer and Alpaca’s fixed 15-minute delayed snapshots. A direct October 2 after-hours probe found 0 IEX versus 130 SIP bars for AAPL and 0 versus 231 for NVDA. IEX remains supported and its single-venue limits remain explicit. Missing closing/opening minutes and incomplete regular sessions remain unavailable. Daily snapshot volume includes extended-hours prints and can differ from the sum of one-minute bar volume because provider aggregation rules differ. Live trade/open/volume fields come from snapshots; their previous close and all historical/overnight bar requests use split adjustment. Market capitalization now comes from Nasdaq’s public screener; instruments without reported caps and relative-volume history without a denominator remain unavailable. Optional Postgres is not configured; browser persistence and bounded process caching are active. A browser reload cannot keep an unfinished network job running, but it restores its last saved partial results without restarting.
+
+
+### AMC session correction — 2026-10-03
+
+- AMC change and volume now share the calendar-selected window from the last completed regular close through the next regular open. After Friday close and over weekends, both use Friday after-hours; subsequent premarket joins that same window.
+- Legacy saved rows backfill the corrected AMC fields at their original cutoff without rescanning or replacing saved quotes. Server cache key changed to avoid old calculations.
+- Independently audited ARM, AAPL, NVDA against raw Alpaca bars in `artifacts/live/amc/audit.json`: ARM 307.49 close, 307.89 latest after-hours, +0.1300855%, 390,422 shares.
+- 111 unit tests, 3 live integration tests, 5 affected scanner E2E workflows, lint, TypeScript, production build passed. Desktop/mobile scanner inspected; no page errors.
+- Local environment currently specifies SIP/zero delay; that configuration was denied by Alpaca. Validation and running server used a process-only 16-minute delay override without editing the user's environment file.

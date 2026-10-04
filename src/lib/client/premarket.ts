@@ -74,6 +74,7 @@ export function withPremarketMetrics(
           premarketVolume: metric.volume,
           premarketTime: metric.time,
           premarketSessionDate: data.sessionDate,
+          amcVersion: 1,
         }
       : row;
   });

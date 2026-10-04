@@ -24,7 +24,12 @@ export function calculatePremarketVolume(
   session: Session,
   asOf: string,
 ): number | null {
-  const bars = normalizeBars(source).filter(
+  const bars = extendedBars(
+    normalizeBars(source),
+    previous,
+    session,
+    asOf,
+  ).filter(
     (b) =>
       b.t >= previous.close &&
       b.t < session.open &&
@@ -44,6 +49,34 @@ export function calculatePremarketChange(
     .filter(
       (b) =>
         b.t >= marketTime(session.date, "04:00") &&
+        b.t < session.open &&
+        Date.parse(b.t) + MINUTE <= Date.parse(asOf),
+    )
+    .at(-1);
+  return last
+    ? {
+        change:
+          previousDaily && marketDate(previousDaily.t) === previous.date
+            ? calculateGapPercent(last.c, previousDaily.c)
+            : null,
+        time: last.t,
+        price: last.c,
+      }
+    : { change: null, time: null, price: null };
+}
+
+// One overnight window: prior regular close through the next regular open.
+export function calculateAMCChange(
+  source: Bar[],
+  previousDaily: Bar | null,
+  previous: Session,
+  session: Session,
+  asOf: string,
+) {
+  const last = extendedBars(normalizeBars(source), previous, session, asOf)
+    .filter(
+      (b) =>
+        b.t >= previous.close &&
         b.t < session.open &&
         Date.parse(b.t) + MINUTE <= Date.parse(asOf),
     )

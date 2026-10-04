@@ -112,6 +112,7 @@ function useScannerState() {
     run?.rows
       .filter(
         (row) =>
+          row.amcVersion !== 1 ||
           row.premarketPrice == null ||
           row.premarketVolume == null ||
           row.premarketChange == null,
@@ -142,6 +143,7 @@ function useScannerState() {
       latestRun.current?.rows
         .filter(
           (row) =>
+            row.amcVersion !== 1 ||
             row.premarketPrice == null ||
             row.premarketVolume == null ||
             row.premarketChange == null,

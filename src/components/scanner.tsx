@@ -713,14 +713,15 @@ export function Scanner() {
           changed since the previous trading day’s close.
         </li>
         <li>
-          <strong>AMC Chg % (After Market Close):</strong> Latest premarket
-          price versus the previous trading day’s close. Stops updating at the
-          open.
+          <strong>AMC Chg % (After Market Close):</strong> Latest price since
+          the most recent regular close, compared with that close. Includes
+          after-hours and premarket. Holds the last value over weekends and
+          stops at the next open.
         </li>
         <li>
           <strong>AMC Volume (After Market Close):</strong> Shares traded since
-          the previous trading day’s close, including after-hours and premarket,
-          through the scan time. Stops updating at 9:30 AM ET.
+          the most recent regular close, including after-hours and premarket, up
+          to the scan time or next open. Holds Friday’s total over the weekend.
         </li>
         <li>
           <strong>Opening Gap:</strong> How much higher or lower the stock

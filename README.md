@@ -35,18 +35,18 @@ Scan the eligible Alpaca US-equity universe with bounded bulk requests, then nar
 
 ### What the columns measure
 
-| Column | Calculation or source |
-| --- | --- |
-| **Market Cap** | Reported Nasdaq market capitalization; current source values, not historical valuations. |
-| **Price** | Latest available traded price, including eligible premarket or after-hours trades. |
-| **AMC Chg %** | Last completed premarket close ÷ adjusted previous regular close − 1, multiplied by 100. Uses 4:00–9:30 AM ET bars and freezes at the open. |
-| **Price Chg** | Latest traded price ÷ adjusted previous regular close − 1, multiplied by 100. |
-| **Opening Gap** | Regular opening price ÷ adjusted previous regular close − 1, multiplied by 100. |
-| **% Chg From Open** | Latest traded price ÷ regular opening price − 1, multiplied by 100. |
-| **AMC Volume** | Sum of completed minute-bar volumes from the previous trading session’s regular close to today’s open, capped by the scan time. Includes prior after-hours and current premarket. |
-| **Volume** | The provider’s cumulative volume for the displayed date, including that date’s extended-hours trading. |
+| Column              | Calculation or source                                                                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Market Cap**      | Reported Nasdaq market capitalization; current source values, not historical valuations.                                                                                                              |
+| **Price**           | Latest available traded price, including eligible premarket or after-hours trades.                                                                                                                    |
+| **AMC Chg %**       | Latest completed extended-hours price ÷ the regular close that started the window − 1, multiplied by 100. Rolls into a new window after each regular close; retains Friday after-hours over weekends. |
+| **Price Chg**       | Latest traded price ÷ adjusted previous regular close − 1, multiplied by 100.                                                                                                                         |
+| **Opening Gap**     | Regular opening price ÷ adjusted previous regular close − 1, multiplied by 100.                                                                                                                       |
+| **% Chg From Open** | Latest traded price ÷ regular opening price − 1, multiplied by 100.                                                                                                                                   |
+| **AMC Volume**      | Sum of completed minute-bar volumes from the most recent regular close to the next open, capped by the scan time. Includes after-hours and the following premarket.                                   |
+| **Volume**          | The provider’s cumulative volume for the displayed date, including that date’s extended-hours trading.                                                                                                |
 
-**AMC** means **After Market Close** in the interface. The change and volume columns have the specific windows above; they are not a separate live after-hours percentage against today’s closing price. Opening-based metrics become available after the regular open. Blank filters impose no restriction; active filters exclude unavailable values for that metric.
+**AMC** means **After Market Close** in the interface. The change and volume columns have the specific windows above; after market close they compare against that day’s regular close. Opening-based metrics become available after the regular open. Blank filters impose no restriction; active filters exclude unavailable values for that metric.
 
 Older saved results can backfill missing AMC fields at their **original cutoff time**, without replacing their saved quotes. Successful batches appear as they finish; failed requests expose a retry control.
 
@@ -56,9 +56,9 @@ Older saved results can backfill missing AMC fields at their **original cutoff t
 
 Ask a precise question: **when this stock met my gap threshold, what happened afterward?**
 
-| Event rule | What qualifies |
-| --- | --- |
-| **Opening gap** | The regular opening price meets the selected gap threshold against the previous trading day’s regular close. |
+| Event rule                  | What qualifies                                                                                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Opening gap**             | The regular opening price meets the selected gap threshold against the previous trading day’s regular close.                                        |
 | **Extended-hours crossing** | Any eligible minute in prior after-hours or the following premarket reaches the threshold. An event still counts if the move fades before the open. |
 
 Select a ticker, direction, threshold, and date range. Each trading session counts once. The study reports average closing price, price change, opening gap, open-to-close change, daily volume, and the frequency of continuation at the close.
@@ -120,15 +120,15 @@ Import the repository as a Next.js project and configure the same server-side en
 
 ## Engineering
 
-| Layer | Technology |
-| --- | --- |
-| Application | Next.js App Router, React, TypeScript |
-| Tables and requests | TanStack Table, TanStack Query |
-| Price charts | Lightweight Charts |
-| Market data | Server-side Alpaca REST requests; Nasdaq bulk market caps |
-| Session handling | Luxon, US Eastern time, provider trading calendars |
-| Persistence | Browser IndexedDB; optional Postgres with Drizzle |
-| Validation | Vitest, live provider checks, Playwright, independent source audits |
+| Layer               | Technology                                                          |
+| ------------------- | ------------------------------------------------------------------- |
+| Application         | Next.js App Router, React, TypeScript                               |
+| Tables and requests | TanStack Table, TanStack Query                                      |
+| Price charts        | Lightweight Charts                                                  |
+| Market data         | Server-side Alpaca REST requests; Nasdaq bulk market caps           |
+| Session handling    | Luxon, US Eastern time, provider trading calendars                  |
+| Persistence         | Browser IndexedDB; optional Postgres with Drizzle                   |
+| Validation          | Vitest, live provider checks, Playwright, independent source audits |
 
 Financial calculations live in shared deterministic functions. Calendar handling accounts for trading holidays, weekends, daylight-saving transitions, and session boundaries. Bulk requests, bounded concurrency, pagination, caching, and rate-limit-aware retries keep the universe practical.
 
