@@ -44,25 +44,25 @@ test("unified scanner: live quote filters, sorting, Yahoo and persistent handoff
     );
   await expect(
     page.getByRole("button", {
-      name: "AMC Volume",
+      name: "Session Volume",
       exact: true,
     }),
   ).toBeVisible();
   expect(batch.rows.every((r) => r.premarketVolume != null)).toBe(true);
   const minimum = Math.min(...batch.rows.map((r) => r.premarketVolume!));
   const maximum = Math.max(...batch.rows.map((r) => r.premarketVolume!));
-  await page.getByLabel("Minimum AMC volume").fill(String(minimum));
-  await page.getByLabel("Maximum AMC volume").fill(String(minimum));
+  await page.getByLabel("Minimum session volume").fill(String(minimum));
+  await page.getByLabel("Maximum session volume").fill(String(minimum));
   await expect(page.locator("tbody tr")).toHaveCount(
     batch.rows.filter((r) => r.premarketVolume === minimum).length,
   );
-  await page.getByLabel("Minimum AMC volume").fill(String(maximum + 1));
+  await page.getByLabel("Minimum session volume").fill(String(maximum + 1));
   await expect(
     page.getByRole("alert").filter({ hasText: "Invalid filters" }),
   ).toBeVisible();
-  await page.getByLabel("Maximum AMC volume").fill("");
+  await page.getByLabel("Maximum session volume").fill("");
   await expect(page.locator("tbody tr")).toHaveCount(0);
-  await page.getByLabel("Minimum AMC volume").fill("");
+  await page.getByLabel("Minimum session volume").fill("");
   await page.getByLabel("Minimum opening gap %").fill("999");
   await expect(page.locator("tbody tr")).toHaveCount(0);
   await page.getByLabel("Minimum opening gap %").fill("");
@@ -571,7 +571,7 @@ test("unified scanner: independent percentages, ordered USD ranges and navigatio
       (r: (typeof batch.rows)[number]) => r.quote?.priceChange,
     ],
     [
-      "Minimum AMC change %",
+      "Minimum session change %",
       (r: (typeof batch.rows)[number]) => r.premarketChange,
     ],
     [
@@ -595,7 +595,7 @@ test("unified scanner: independent percentages, ordered USD ranges and navigatio
   }
   for (const label of [
     "Minimum market cap",
-    "Minimum session volume",
+    "Minimum volume",
     "Minimum price",
   ]) {
     await page.getByLabel(label, { exact: true }).fill("999999999999999");
@@ -611,6 +611,47 @@ test("unified scanner: independent percentages, ordered USD ranges and navigatio
     await expect(page.locator("tbody tr")).toHaveCount(0);
     await page.getByLabel(label, { exact: true }).fill("");
   }
+  let ruleRequests = 0;
+  page.on("request", (r) => {
+    if (
+      r.url().endsWith("/api/scan") ||
+      r.url().endsWith("/api/scan/premarket")
+    )
+      ruleRequests++;
+  });
+  for (const rule of ["premarket", "postmarket", "overnight"] as const) {
+    await page.getByLabel("Session rule", { exact: true }).selectOption(rule);
+    for (const stock of batch.rows) {
+      const metric = stock.sessionMetrics![rule];
+      const line = page.locator("tbody tr").filter({
+        has: page.getByRole("link", {
+          name: `${stock.symbol} ↗`,
+          exact: true,
+        }),
+      });
+      await expect(line.locator("td").nth(3)).toContainText(
+        metric.change == null
+          ? "—"
+          : `${metric.change > 0 ? "+" : ""}${metric.change.toFixed(2)}%`,
+      );
+      await expect(line).toContainText(metric.date);
+    }
+    await page.getByLabel("Minimum session change %").fill("0");
+    await expect(page.locator("tbody tr")).toHaveCount(
+      batch.rows.filter(
+        (r) =>
+          r.sessionMetrics![rule].change != null &&
+          r.sessionMetrics![rule].change! >= 0,
+      ).length,
+    );
+    await page.getByLabel("Minimum session change %").fill("");
+    await page
+      .getByLabel("Minimum session volume", { exact: true })
+      .fill("99999999999999");
+    await expect(page.locator("tbody tr")).toHaveCount(0);
+    await page.getByLabel("Minimum session volume", { exact: true }).fill("");
+  }
+  expect(ruleRequests).toBe(0);
   const cap = batch.rows.find((r) => r.marketCap != null)!.marketCap!;
   await page
     .getByLabel("Minimum market cap", { exact: true })
@@ -644,9 +685,14 @@ test("unified scanner: independent percentages, ordered USD ranges and navigatio
     path: "artifacts/qa/unified-scanner.png",
     fullPage: true,
   });
-  await page.getByLabel("Minimum AMC change %").fill("1");
+  await page
+    .getByLabel("Session rule", { exact: true })
+    .selectOption("postmarket");
+  await page.getByLabel("Minimum session change %").fill("1");
   const expected = batch.rows.filter(
-    (r) => r.premarketChange != null && r.premarketChange >= 1,
+    (r) =>
+      r.sessionMetrics!.postmarket.change != null &&
+      r.sessionMetrics!.postmarket.change! >= 1,
   ).length;
   let scans = 0;
   page.on("request", (r) => {
@@ -657,7 +703,10 @@ test("unified scanner: independent percentages, ordered USD ranges and navigatio
   await page.getByRole("link", { name: "Gap Scanner", exact: true }).click();
   await expect(page).toHaveURL(/:3000\/$/);
   await page.reload();
-  await expect(page.getByLabel("Minimum AMC change %")).toHaveValue("1");
+  await expect(page.getByLabel("Minimum session change %")).toHaveValue("1");
+  await expect(page.getByLabel("Session rule", { exact: true })).toHaveValue(
+    "postmarket",
+  );
   await expect(page.locator("tbody tr")).toHaveCount(expected);
   expect(scans).toBe(0);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -751,7 +800,7 @@ test("8 AM saved source data can be filtered without an opening value or new sca
   await page.reload();
   await expect(page.getByText("Temporary data outage")).toBeVisible();
   await expect(page.locator("tbody tr")).toHaveCount(source.batch.rows.length);
-  await page.getByRole("button", { name: "Retry AMC data" }).click();
+  await page.getByRole("button", { name: "Retry session data" }).click();
   const hydrationResponse = await hydrated;
   const input = hydrationResponse.request().postDataJSON() as { asOf: string };
   expect(input.asOf).toBe(source.context.asOf);
@@ -772,11 +821,11 @@ test("8 AM saved source data can be filtered without an opening value or new sca
       `${metrics.metrics[row.symbol].change > 0 ? "+" : ""}${metrics.metrics[row.symbol].change.toFixed(2)}%`,
     );
   }
-  await expect(page.getByText("Loading saved AMC data…")).toHaveCount(0);
+  await expect(page.getByText("Loading saved session data…")).toHaveCount(0);
   await expect(page.getByLabel("Scan rule")).toHaveCount(0);
   await expect(page.locator("tbody tr")).toHaveCount(source.batch.rows.length);
   await expect(page.getByLabel("Minimum opening gap %")).toHaveValue("");
-  await page.getByLabel("Minimum AMC change %").fill("1");
+  await page.getByLabel("Minimum session change %").fill("1");
   await expect(page.locator("tbody tr")).toHaveCount(
     source.batch.rows.filter((r) => r.premarketChange! >= 1).length,
   );

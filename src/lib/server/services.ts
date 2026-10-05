@@ -1,3 +1,4 @@
+import { calculateSessionMetrics } from "../domain/session-metrics";
 import "server-only";
 import { AlpacaClient } from "../provider/alpaca";
 import { getMarketCaps } from "../provider/market-caps";
@@ -102,10 +103,13 @@ export async function premarketMetrics(
   context?: ScanContext,
 ) {
   context ??= await getContext(client, asOf);
-  const start = context.previous.close;
+  const start =
+    context.quotePrevious.close < context.previous.close
+      ? context.quotePrevious.close
+      : context.previous.close;
   const cutoff = asOf < context.session.open ? asOf : context.session.open;
   const premarket = await cached(
-    cacheKey("scan-amc-v5", [
+    cacheKey("scan-sessions-v6", [
       client.config.feed,
       asOf,
       context.session.date,
@@ -119,6 +123,7 @@ export async function premarketMetrics(
           string,
           ReturnType<typeof calculateAMCChange> & {
             volume: number | null;
+            sessions: ReturnType<typeof calculateSessionMetrics>;
           }
         >;
       const [bars, references] = await Promise.all([
@@ -129,7 +134,7 @@ export async function premarketMetrics(
         ),
         client.bars(
           tickers,
-          marketTime(context.previous.date, "00:00"),
+          marketTime(context.quotePrevious.date, "00:00"),
           new Date(
             Math.min(
               Date.parse(cutoff),
@@ -143,6 +148,11 @@ export async function premarketMetrics(
         tickers.map((symbol) => [
           symbol,
           {
+            sessions: calculateSessionMetrics(
+              bars[symbol] ?? [],
+              references[symbol] ?? [],
+              context,
+            ),
             ...calculateAMCChange(
               bars[symbol] ?? [],
               references[symbol]?.find(
@@ -472,7 +482,8 @@ export async function scanBatch(
         premarketPrice: premarket.metrics[row.symbol]?.price ?? null,
         premarketTime: premarket.metrics[row.symbol]?.time ?? null,
         premarketSessionDate: context.session.date,
-        amcVersion: 1,
+        amcVersion: 2,
+        sessionMetrics: premarket.metrics[row.symbol]?.sessions,
       }));
       capWarnings.push(...premarket.warnings);
     } catch {
@@ -483,10 +494,10 @@ export async function scanBatch(
         premarketPrice: null,
         premarketTime: null,
         premarketSessionDate: context.session.date,
-        amcVersion: 1,
+        amcVersion: 2,
       }));
       capWarnings.push(
-        "AMC change and volume could not be loaded. Other scanner results remain available; Scan to retry.",
+        "Session change and volume could not be loaded. Other scanner results remain available; Scan to retry.",
       );
     }
   }

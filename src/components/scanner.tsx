@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { rowsForSession } from "@/lib/domain/session-metrics";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { request } from "@/lib/client/workflows";
@@ -43,6 +44,7 @@ export function Scanner() {
     stop,
   } = useScanner();
   const {
+    sessionRule,
     threshold,
     minOpeningGap,
     direction,
@@ -102,7 +104,7 @@ export function Scanner() {
   const rows = useMemo(
     () =>
       valid
-        ? filterScannerRows(run?.rows ?? [], {
+        ? filterScannerRows(rowsForSession(run?.rows ?? [], sessionRule), {
             mode: activeMode,
             threshold: 0,
             minOpeningGap: minOpeningGap ? Number(minOpeningGap) : undefined,
@@ -137,6 +139,7 @@ export function Scanner() {
         : [],
     [
       valid,
+      sessionRule,
       activeMode,
       premarketMode,
       run,
@@ -213,10 +216,10 @@ export function Scanner() {
         id: "premarketChange",
         accessorFn: (r) =>
           r.premarketChange ?? (premarketMode ? r.gap : undefined),
-        header: "AMC Chg %",
+        header: "Session Chg %",
         cell: ({ row }) => (
           <span
-            title={`Premarket session ${row.original.premarketSessionDate ?? row.original.quote?.sessionDate ?? "unavailable"} · Last premarket bar ${timestamp(row.original.premarketTime ?? (premarketMode ? row.original.latestTime : null))}`}
+            title={`Session ${row.original.premarketSessionDate ?? row.original.quote?.sessionDate ?? "unavailable"} · Latest session price ${timestamp(row.original.premarketTime ?? (premarketMode ? row.original.latestTime : null))}`}
           >
             <Percent
               value={
@@ -243,12 +246,22 @@ export function Scanner() {
       ),
       {
         accessorKey: "premarketVolume",
-        header: "AMC Volume",
+        header: "Session Volume",
         cell: ({ row }) => (
-          <span title="Shares traded from the previous trading day’s close to the open, through this scan’s cutoff">
+          <span title="Shares traded in the selected session through the saved cutoff">
             {compact(row.original.premarketVolume)}
           </span>
         ),
+      },
+      {
+        accessorKey: "premarketSessionDate",
+        header: "Session Date",
+        cell: ({ row }) => row.original.premarketSessionDate ?? "—",
+      },
+      {
+        accessorKey: "premarketTime",
+        header: "Session Price Time",
+        cell: ({ row }) => timestamp(row.original.premarketTime),
       },
       {
         id: "sessionVolume",
@@ -360,6 +373,8 @@ export function Scanner() {
               "priceChange",
               "premarketChange",
               "premarketVolume",
+              "premarketSessionDate",
+              "premarketTime",
               "openingGap",
               "changeFromOpen",
               premarketMode ? "volume" : "sessionVolume",
@@ -432,6 +447,22 @@ export function Scanner() {
         <div className="panel-title">
           <span>Scanner filters</span>
         </div>
+        <div className="filter-toolbar">
+          <label>
+            SESSION RULE
+            <select
+              aria-label="Session rule"
+              value={sessionRule}
+              onChange={(e) =>
+                setSetting("sessionRule", e.target.value as typeof sessionRule)
+              }
+            >
+              <option value="premarket">Pre-Market</option>
+              <option value="postmarket">Post-Market</option>
+              <option value="overnight">Overnight</option>
+            </select>
+          </label>
+        </div>
         <div className="filter-toolbar scanner-percent-filters">
           <label>
             MIN PRICE CHG %
@@ -445,9 +476,9 @@ export function Scanner() {
             />
           </label>
           <label>
-            MIN AMC CHG %
+            MIN SESSION CHG %
             <input
-              aria-label="Minimum AMC change %"
+              aria-label="Minimum session change %"
               type="number"
               step="any"
               placeholder="Any"
@@ -506,7 +537,7 @@ export function Scanner() {
           <label>
             MIN VOLUME
             <input
-              aria-label="Minimum session volume"
+              aria-label="Minimum volume"
               type="number"
               min="0"
               placeholder="Any"
@@ -555,9 +586,9 @@ export function Scanner() {
         </div>
         <div className="filter-toolbar">
           <label>
-            MIN AMC VOLUME
+            MIN SESSION VOLUME
             <input
-              aria-label="Minimum AMC volume"
+              aria-label="Minimum session volume"
               type="number"
               min="0"
               placeholder="Any"
@@ -566,9 +597,9 @@ export function Scanner() {
             />
           </label>
           <label>
-            MAX AMC VOLUME
+            MAX SESSION VOLUME
             <input
-              aria-label="Maximum AMC volume"
+              aria-label="Maximum session volume"
               type="number"
               min="0"
               placeholder="Any"
@@ -600,12 +631,12 @@ export function Scanner() {
           {status.error.message}
         </Notice>
       )}
-      {premarketLoading && <p role="status">Loading saved AMC data…</p>}
+      {premarketLoading && <p role="status">Loading saved session data…</p>}
       {premarketError && (
-        <Notice title="AMC data could not be loaded" error>
+        <Notice title="session data could not be loaded" error>
           {premarketError}{" "}
           <button type="button" onClick={retryPremarket}>
-            Retry AMC data
+            Retry session data
           </button>
         </Notice>
       )}
@@ -713,15 +744,18 @@ export function Scanner() {
           changed since the previous trading day’s close.
         </li>
         <li>
-          <strong>AMC Chg % (After Market Close):</strong> Latest price since
-          the most recent regular close, compared with that close. Includes
-          after-hours and premarket. Holds the last value over weekends and
-          stops at the next open.
+          <strong>Session Chg %:</strong> Latest price in the selected session
+          compared with the regular close that came before it.
         </li>
         <li>
-          <strong>AMC Volume (After Market Close):</strong> Shares traded since
-          the most recent regular close, including after-hours and premarket, up
-          to the scan time or next open. Holds Friday’s total over the weekend.
+          <strong>Session Volume:</strong> Shares traded in the selected window,
+          through the saved scan time. Missing data stays unavailable.
+        </li>
+        <li>
+          <strong>Session rules:</strong> Pre-Market is 4–9:30 AM ET.
+          Post-Market is the regular close–8 PM ET. Overnight combines
+          post-market and the following premarket; it does not include 8 PM–4 AM
+          trading. Weekend results retain the last available session.
         </li>
         <li>
           <strong>Opening Gap:</strong> How much higher or lower the stock

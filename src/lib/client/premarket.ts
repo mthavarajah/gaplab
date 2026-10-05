@@ -1,4 +1,4 @@
-import type { ScannerRow } from "../domain/types";
+import type { ScannerRow, SessionMetric, SessionRule } from "../domain/types";
 import { SCAN_BATCH_SIZE } from "../domain/limits";
 import { request } from "./workflows";
 export type PremarketMetrics = {
@@ -6,6 +6,7 @@ export type PremarketMetrics = {
   metrics: Record<
     string,
     {
+      sessions?: Record<SessionRule, SessionMetric>;
       price: number | null;
       change: number | null;
       volume: number | null;
@@ -74,7 +75,8 @@ export function withPremarketMetrics(
           premarketVolume: metric.volume,
           premarketTime: metric.time,
           premarketSessionDate: data.sessionDate,
-          amcVersion: 1,
+          amcVersion: metric.sessions ? 2 : 1,
+          sessionMetrics: metric.sessions,
         }
       : row;
   });

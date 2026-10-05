@@ -128,3 +128,12 @@ The local configuration uses delayed SIP: a 16-minute historical buffer and Alpa
 - Independently audited ARM, AAPL, NVDA against raw Alpaca bars in `artifacts/live/amc/audit.json`: ARM 307.49 close, 307.89 latest after-hours, +0.1300855%, 390,422 shares.
 - 111 unit tests, 3 live integration tests, 5 affected scanner E2E workflows, lint, TypeScript, production build passed. Desktop/mobile scanner inspected; no page errors.
 - Local environment currently specifies SIP/zero delay; that configuration was denied by Alpaca. Validation and running server used a process-only 16-minute delay override without editing the user's environment file.
+
+
+### Session selector — 2026-10-04
+
+- Replaced visible AMC change/volume with Session Chg % and Session Volume. Added Pre-Market, Post-Market, Overnight selector and matching minimum change/minimum-maximum volume inputs. Session date and latest completed price-bar time are visible in the table.
+- The server calculates all three windows from real grouped Alpaca bars and matching daily close references. Pre-Market is 04:00–regular open; Post-Market is the latest completed regular close–20:00; Overnight combines that post-market with the next premarket. No 20:00–04:00 data is assumed.
+- Switching rules selects already-loaded metrics and independently filters change/volume without restarting the scan. Saved rule and filter values survive navigation/reload; legacy rows backfill all session metrics at their original cutoff.
+- Raw ARM/AAPL/NVDA audit checked latest bar, reference close, percentage, and volume for every rule. ARM Friday premarket +4.990764%, 387,384 shares; Friday post-market/overnight +0.130086%, 390,422 shares. Audit: `artifacts/live/amc/audit.json`.
+- 115 unit tests, 3 live integration tests, all 9 E2E workflows passed. Final targeted E2E verified rule/filter persistence and data retry. Typecheck, lint, production build passed. Desktop/mobile scanner visually inspected, no page errors or page overflow.

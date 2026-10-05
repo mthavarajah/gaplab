@@ -27,7 +27,7 @@ Gaplab brings two research workflows into a dark, focused trading workspace: dis
 
 Scan the eligible Alpaca US-equity universe with bounded bulk requests, then narrow the results using independent filters. There is no hidden requirement that price must remain above the opening price.
 
-- **Flexible filters:** minimum Price Chg %, AMC Chg %, Opening Gap %, and Change From Open %; min/max market cap in dollars, price, day volume, and AMC volume.
+- **Flexible filters:** minimum Price Chg %, Session Chg %, Opening Gap %, and Change From Open %; min/max market cap in dollars, price, day volume, and session volume.
 - **Sortable results:** compare price movement, company size, and trading activity using full-precision values, with prices displayed to two decimal places.
 - **Ticker research:** open Yahoo Finance directly, inspect a stock in the detail drawer, or send its ticker to the backtester.
 - **A workspace that remembers:** navigation preserves inputs, results, and running jobs. Reload restores saved output without starting a new price scan.
@@ -35,20 +35,20 @@ Scan the eligible Alpaca US-equity universe with bounded bulk requests, then nar
 
 ### What the columns measure
 
-| Column              | Calculation or source                                                                                                                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Market Cap**      | Reported Nasdaq market capitalization; current source values, not historical valuations.                                                                                                              |
-| **Price**           | Latest available traded price, including eligible premarket or after-hours trades.                                                                                                                    |
-| **AMC Chg %**       | Latest completed extended-hours price ÷ the regular close that started the window − 1, multiplied by 100. Rolls into a new window after each regular close; retains Friday after-hours over weekends. |
-| **Price Chg**       | Latest traded price ÷ adjusted previous regular close − 1, multiplied by 100.                                                                                                                         |
-| **Opening Gap**     | Regular opening price ÷ adjusted previous regular close − 1, multiplied by 100.                                                                                                                       |
-| **% Chg From Open** | Latest traded price ÷ regular opening price − 1, multiplied by 100.                                                                                                                                   |
-| **AMC Volume**      | Sum of completed minute-bar volumes from the most recent regular close to the next open, capped by the scan time. Includes after-hours and the following premarket.                                   |
-| **Volume**          | The provider’s cumulative volume for the displayed date, including that date’s extended-hours trading.                                                                                                |
+| Column              | Calculation or source                                                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Market Cap**      | Reported Nasdaq market capitalization; current source values, not historical valuations.                                          |
+| **Price**           | Latest available traded price, including eligible premarket or after-hours trades.                                                |
+| **Session Chg %**   | Latest completed price in the selected session ÷ its reference regular close − 1, multiplied by 100. See the session rules below. |
+| **Price Chg**       | Latest traded price ÷ adjusted previous regular close − 1, multiplied by 100.                                                     |
+| **Opening Gap**     | Regular opening price ÷ adjusted previous regular close − 1, multiplied by 100.                                                   |
+| **% Chg From Open** | Latest traded price ÷ regular opening price − 1, multiplied by 100.                                                               |
+| **Session Volume**  | Sum of completed minute-bar volumes in the selected session, capped by the saved scan time.                                       |
+| **Volume**          | The provider’s cumulative volume for the displayed date, including that date’s extended-hours trading.                            |
 
-**AMC** means **After Market Close** in the interface. The change and volume columns have the specific windows above; after market close they compare against that day’s regular close. Opening-based metrics become available after the regular open. Blank filters impose no restriction; active filters exclude unavailable values for that metric.
+**Session rules:** Pre-Market uses 4:00–9:30 AM ET against the previous regular close. Post-Market uses the last completed regular close–8:00 PM ET against that close. Overnight combines post-market and the following premarket against the close that started the window; it does not include 8:00 PM–4:00 AM trading. The selector changes Session Chg %, Session Volume, their independent filters, and the visible session date/price timestamp without starting a new scan. Weekend values retain the latest available session. Opening-based metrics remain separate. Blank filters impose no restriction; active filters exclude unavailable values for that metric.
 
-Older saved results can backfill missing AMC fields at their **original cutoff time**, without replacing their saved quotes. Successful batches appear as they finish; failed requests expose a retry control.
+Older saved results can backfill missing session fields at their **original cutoff time**, without replacing their saved quotes. Successful batches appear as they finish; failed requests expose a retry control.
 
 ## Historical Backtester
 

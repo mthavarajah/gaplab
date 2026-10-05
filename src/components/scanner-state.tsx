@@ -110,13 +110,7 @@ function useScannerState() {
 
   const premarketSymbols =
     run?.rows
-      .filter(
-        (row) =>
-          row.amcVersion !== 1 ||
-          row.premarketPrice == null ||
-          row.premarketVolume == null ||
-          row.premarketChange == null,
-      )
+      .filter((row) => row.amcVersion !== 2 || !row.sessionMetrics)
       .map((row) => row.symbol) ?? [];
   const premarketKey =
     ready && !busy && run && premarketSymbols.length
@@ -141,13 +135,7 @@ function useScannerState() {
     const c = new AbortController();
     const symbols =
       latestRun.current?.rows
-        .filter(
-          (row) =>
-            row.amcVersion !== 1 ||
-            row.premarketPrice == null ||
-            row.premarketVolume == null ||
-            row.premarketChange == null,
-        )
+        .filter((row) => row.amcVersion !== 2 || !row.sessionMetrics)
         .map((row) => row.symbol) ?? [];
     const applyBatch = (data: Parameters<typeof withPremarketMetrics>[1]) => {
       if (c.signal.aborted) return;

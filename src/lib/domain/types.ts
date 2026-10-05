@@ -106,7 +106,17 @@ export type GapEvent = Outcomes & {
   extendedBars: number;
   warnings: string[];
 };
+export type SessionRule = "premarket" | "postmarket" | "overnight";
+export type SessionMetric = {
+  price: number | null;
+  change: number | null;
+  volume: number | null;
+  time: string | null;
+  date: string;
+  referenceDate: string;
+};
 export type ScannerRow = {
+  sessionMetrics?: Record<SessionRule, SessionMetric>;
   premarketChange?: number | null;
   premarketVolume?: number | null;
   premarketPrice?: number | null;
