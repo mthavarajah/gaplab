@@ -44,7 +44,6 @@ export function Scanner() {
     stop,
   } = useScanner();
   const {
-    sessionRule,
     threshold,
     minOpeningGap,
     direction,
@@ -104,7 +103,7 @@ export function Scanner() {
   const rows = useMemo(
     () =>
       valid
-        ? filterScannerRows(rowsForSession(run?.rows ?? [], sessionRule), {
+        ? filterScannerRows(rowsForSession(run?.rows ?? [], "overnight"), {
             mode: activeMode,
             threshold: 0,
             minOpeningGap: minOpeningGap ? Number(minOpeningGap) : undefined,
@@ -139,7 +138,6 @@ export function Scanner() {
         : [],
     [
       valid,
-      sessionRule,
       activeMode,
       premarketMode,
       run,
@@ -216,7 +214,7 @@ export function Scanner() {
         id: "premarketChange",
         accessorFn: (r) =>
           r.premarketChange ?? (premarketMode ? r.gap : undefined),
-        header: "Session Chg %",
+        header: "Extended-Hours Chg %",
         cell: ({ row }) => (
           <span
             title={`Session ${row.original.premarketSessionDate ?? row.original.quote?.sessionDate ?? "unavailable"} · Latest session price ${timestamp(row.original.premarketTime ?? (premarketMode ? row.original.latestTime : null))}`}
@@ -246,21 +244,21 @@ export function Scanner() {
       ),
       {
         accessorKey: "premarketVolume",
-        header: "Session Volume",
+        header: "Extended-Hours Volume",
         cell: ({ row }) => (
-          <span title="Shares traded in the selected session through the saved cutoff">
+          <span title="Shares traded since the regular close through the next open, capped by the saved cutoff">
             {compact(row.original.premarketVolume)}
           </span>
         ),
       },
       {
         accessorKey: "premarketSessionDate",
-        header: "Session Date",
+        header: "Extended-Hours Date",
         cell: ({ row }) => row.original.premarketSessionDate ?? "—",
       },
       {
         accessorKey: "premarketTime",
-        header: "Session Price Time",
+        header: "Extended-Hours Price Time",
         cell: ({ row }) => timestamp(row.original.premarketTime),
       },
       {
@@ -447,22 +445,6 @@ export function Scanner() {
         <div className="panel-title">
           <span>Scanner filters</span>
         </div>
-        <div className="filter-toolbar">
-          <label>
-            SESSION RULE
-            <select
-              aria-label="Session rule"
-              value={sessionRule}
-              onChange={(e) =>
-                setSetting("sessionRule", e.target.value as typeof sessionRule)
-              }
-            >
-              <option value="premarket">Pre-Market</option>
-              <option value="postmarket">Post-Market</option>
-              <option value="overnight">Overnight</option>
-            </select>
-          </label>
-        </div>
         <div className="filter-toolbar scanner-percent-filters">
           <label>
             MIN PRICE CHG %
@@ -476,9 +458,9 @@ export function Scanner() {
             />
           </label>
           <label>
-            MIN SESSION CHG %
+            MIN EXTENDED-HOURS CHG %
             <input
-              aria-label="Minimum session change %"
+              aria-label="Minimum extended-hours change %"
               type="number"
               step="any"
               placeholder="Any"
@@ -586,9 +568,9 @@ export function Scanner() {
         </div>
         <div className="filter-toolbar">
           <label>
-            MIN SESSION VOLUME
+            MIN EXTENDED-HOURS VOLUME
             <input
-              aria-label="Minimum session volume"
+              aria-label="Minimum extended-hours volume"
               type="number"
               min="0"
               placeholder="Any"
@@ -597,9 +579,9 @@ export function Scanner() {
             />
           </label>
           <label>
-            MAX SESSION VOLUME
+            MAX EXTENDED-HOURS VOLUME
             <input
-              aria-label="Maximum session volume"
+              aria-label="Maximum extended-hours volume"
               type="number"
               min="0"
               placeholder="Any"
@@ -744,18 +726,18 @@ export function Scanner() {
           changed since the previous trading day’s close.
         </li>
         <li>
-          <strong>Session Chg %:</strong> Latest price in the selected session
-          compared with the regular close that came before it.
+          <strong>Extended-Hours Chg %:</strong> Latest extended-hours price
+          compared with the regular close that started the window. Includes
+          after-hours and the following premarket; freezes at the next open.
         </li>
         <li>
-          <strong>Session Volume:</strong> Shares traded in the selected window,
-          through the saved scan time. Missing data stays unavailable.
+          <strong>Extended-Hours Volume:</strong> Shares traded after the
+          regular close through the next open, capped by the saved scan time.
         </li>
         <li>
-          <strong>Session rules:</strong> Pre-Market is 4–9:30 AM ET.
-          Post-Market is the regular close–8 PM ET. Overnight combines
-          post-market and the following premarket; it does not include 8 PM–4 AM
-          trading. Weekend results retain the last available session.
+          <strong>Extended hours:</strong> Regular close–8 PM ET, then 4 AM–the
+          next regular open. Weekend values retain Friday’s last data. A new
+          window starts after each regular close.
         </li>
         <li>
           <strong>Opening Gap:</strong> How much higher or lower the stock

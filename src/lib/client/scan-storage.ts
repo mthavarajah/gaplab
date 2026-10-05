@@ -1,11 +1,10 @@
 import type { ScanRun } from "./workflows";
-import type { Direction, ScanMode, SessionRule } from "../domain/types";
+import type { Direction, ScanMode } from "../domain/types";
 
 export type ScannerSettings = {
   marketCapUnit: "USD";
   scannerLayout?: "unified";
   mode: ScanMode;
-  sessionRule: SessionRule;
   threshold: string;
   direction: Direction;
   minPrice: string;
@@ -28,7 +27,6 @@ export const defaultScannerSettings: ScannerSettings = {
   marketCapUnit: "USD",
   scannerLayout: "unified",
   mode: "all",
-  sessionRule: "overnight",
   threshold: "4",
   direction: "up",
   minPrice: "",
@@ -82,8 +80,6 @@ export function restoreScannerSettings(
   if (settings.scannerLayout !== "unified") restored.minOpeningGap = "";
   restored.scannerLayout = "unified";
   restored.mode = "all";
-  if (!["premarket", "postmarket", "overnight"].includes(restored.sessionRule))
-    restored.sessionRule = "overnight";
   return restored;
 }
 

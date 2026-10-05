@@ -137,3 +137,10 @@ The local configuration uses delayed SIP: a 16-minute historical buffer and Alpa
 - Switching rules selects already-loaded metrics and independently filters change/volume without restarting the scan. Saved rule and filter values survive navigation/reload; legacy rows backfill all session metrics at their original cutoff.
 - Raw ARM/AAPL/NVDA audit checked latest bar, reference close, percentage, and volume for every rule. ARM Friday premarket +4.990764%, 387,384 shares; Friday post-market/overnight +0.130086%, 390,422 shares. Audit: `artifacts/live/amc/audit.json`.
 - 115 unit tests, 3 live integration tests, all 9 E2E workflows passed. Final targeted E2E verified rule/filter persistence and data retry. Typecheck, lint, production build passed. Desktop/mobile scanner visually inspected, no page errors or page overflow.
+
+
+### Unified extended-hours column — 2026-10-05
+
+Removed the session selector and its persisted setting. The table and minimum change/minimum-maximum volume filters now always use the combined extended-hours window, with the most recent eligible price versus the regular close that started that window. Renamed visible metrics to Extended-Hours Chg % and Extended-Hours Volume; date and price time remain visible. Existing numerical filters and saved quote outputs are preserved. Provider remains Alpaca.
+
+115 unit tests, typecheck, lint, production build passed. Five affected scanner E2E workflows passed, covering selector absence, filters, reload/navigation, saved-data upgrade and retry. Real-data desktop/mobile scanner inspected; no page errors or overflow. Financial calculation functions are unchanged from the independently audited overnight window.
